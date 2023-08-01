@@ -1,0 +1,109 @@
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+/kaggle/input/patient/dataset.csv
+df=pd.read_csv("/kaggle/input/patient/dataset.csv")
+df.describe()
+encounter_id	patient_id	hospital_id	age	bmi	elective_surgery	height	icu_id	pre_icu_los_days	weight	...	aids	cirrhosis	diabetes_mellitus	hepatic_failure	immunosuppression	leukemia	lymphoma	solid_tumor_with_metastasis	Unnamed: 83	hospital_death
+count	91713.000000	91713.000000	91713.000000	87485.000000	88284.000000	91713.000000	90379.000000	91713.000000	91713.000000	88993.000000	...	90998.000000	90998.000000	90998.000000	90998.000000	90998.000000	90998.000000	90998.000000	90998.000000	0.0	91713.000000
+mean	65606.079280	65537.131464	105.669262	62.309516	29.185818	0.183736	169.641588	508.357692	0.835766	84.028340	...	0.000857	0.015693	0.225192	0.012989	0.026165	0.007066	0.004132	0.020638	NaN	0.086302
+std	37795.088538	37811.252183	62.854406	16.775119	8.275142	0.387271	10.795378	228.989661	2.487756	25.011497	...	0.029265	0.124284	0.417711	0.113229	0.159628	0.083763	0.064148	0.142169	NaN	0.280811
+min	1.000000	1.000000	2.000000	16.000000	14.844926	0.000000	137.200000	82.000000	-24.947222	38.600000	...	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	NaN	0.000000
+25%	32852.000000	32830.000000	47.000000	52.000000	23.641975	0.000000	162.500000	369.000000	0.035417	66.800000	...	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	NaN	0.000000
+50%	65665.000000	65413.000000	109.000000	65.000000	27.654655	0.000000	170.100000	504.000000	0.138889	80.300000	...	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	NaN	0.000000
+75%	98342.000000	98298.000000	161.000000	75.000000	32.930206	0.000000	177.800000	679.000000	0.409028	97.100000	...	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000	NaN	0.000000
+max	131051.000000	131051.000000	204.000000	89.000000	67.814990	1.000000	195.590000	927.000000	159.090972	186.000000	...	1.000000	1.000000	1.000000	1.000000	1.000000	1.000000	1.000000	1.000000	NaN	1.000000
+8 rows × 78 columns
+
+data visualization
+
+from sklearn.model_selection import train_test_split
+features=["age","bmi","gender","height"]
+numerical_cols=["bmi","age","height"]
+categorical_cols=["gender"]
+target="hospital_death"
+X=df[features]
+y=df[target]
+X_train,X_test,y_train,y_test=train_test_split(X,y)
+
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OrdinalEncoder
+/opt/conda/lib/python3.10/site-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.23.5
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OrdinalEncoder
+# Preprocessing for numerical data
+numerical_transformer = SimpleImputer(strategy='most_frequent')
+
+# Preprocessing for categorical data
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OrdinalEncoder())
+])
+# Bundle preprocessing for numerical and categorical data
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor(n_estimators=100, random_state=0)
+from sklearn.metrics import mean_absolute_error
+
+# Bundle preprocessing and modeling code in a pipeline
+my_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('model', model)
+                             ])
+# Preprocessing of training data, fit model 
+my_pipeline.fit(X_train, y_train)
+
+# Preprocessing of validation data, get predictions
+preds = my_pipeline.predict(X_test)
+
+# Evaluate the model
+score = mean_absolute_error(y_test, preds)
+print('MAE:', score*100)
+MAE: 16.230642817058026
+newp=my_pipeline.predict(pd.DataFrame(
+   { "age":[70],"bmi":[15],"gender":["F"],"height":[180]}
+))
+newp[0]
+0.09720472011648482
+import matplotlib.pyplot as plt
+
+# Assuming newp[0] is the predicted numerical value
+predicted_value = newp[0]
+
+# Plotting the predicted value on a graph
+plt.figure(figsize=(8, 6))
+plt.bar(["Predicted Value"], [predicted_value], color='white')
+plt.xlabel("Predicted Value")
+plt.ylabel("Value")
+plt.title("Prediction Graph")
+
+# Marking the predicted value with a red marker
+plt.scatter(["Predicted Value"], [predicted_value], color='red', marker='o', s=100)
+plt.annotate(f"{predicted_value:.2f}", xy=(0, predicted_value), xytext=(-10, 10),
+             textcoords='offset points', ha='center', fontsize=12, color='red')
+
+plt.grid(True)
+plt.show()
